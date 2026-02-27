@@ -1,1 +1,1 @@
-# Snip Project
+# Snip Backend
