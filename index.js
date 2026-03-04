@@ -4,8 +4,11 @@ import mongoose from "mongoose";
 import express from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { CreateUserSchema, SigninSchema } from "./zod.js";
-import { UserModel } from "./db.js";
+import { CreateUserSchema, LinkSchema, SigninSchema } from "./zod.js";
+import { LinkModel, UserModel } from "./db.js";
+import { nanoid } from 'nanoid';
+import qrcode from 'qrcode';
+import { middleware } from "./middleware.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const app = express();
@@ -102,8 +105,62 @@ app.post("/api/auth/signin", async function (req, res) {
   }
 });
 
-app.post("/api/links/shorten", function (req, res) {
+app.post("/api/links/shorten", middleware, async function (req, res) {
   //url shortening
+  //auth is left
+  try {
+    const parsedData = LinkSchema.safeParse(req.body);
+
+    if (!parsedData.success) {
+      return res.status(400).json({
+        message: "Incorrect inputs"
+      });
+    }
+
+    let finalId;
+    const { title, originalUrl, customAlias } = parsedData.data;
+
+    if (customAlias) {
+      // Check collision in both shortId and customAlias fields
+      const checkAlias = await LinkModel.findOne({
+        $or: [{ shortId: customAlias }, { customAlias: customAlias }]
+      });
+
+      if (checkAlias) {
+        return res.status(409).json({
+          message: "Alias already exists"
+        });
+      } else {
+        finalId = customAlias;
+      }
+    } else {
+      const shortId = nanoid(6); // customized length to 6
+      //nanoid - unique string id generator for js
+      finalId = shortId;
+    }
+
+    const qrDataUrl = await qrcode.toDataURL(originalUrl);
+
+    const link = await LinkModel.create({
+      title: title,
+      originalUrl: originalUrl,
+      shortId: finalId,
+      customAlias: customAlias || null,
+      userId: req.userId,
+      qrCode: qrDataUrl,
+    });
+
+    return res.json({
+      finalId,
+      qrDataUrl
+    });
+    
+  } catch (e) {
+    return res.status(500).json({
+      message: "Server Error",
+      error: e.message
+    });
+  }
 });
 
 app.get("/api/links", function (req, res) {
