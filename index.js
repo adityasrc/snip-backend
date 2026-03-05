@@ -165,6 +165,7 @@ app.post("/api/links/shorten", middleware, async function (req, res) {
 
 app.get("/api/links", function (req, res) {
   //dashboard
+  
 });
 
 app.delete("/api/links/:id", function (req, res) {
@@ -175,8 +176,51 @@ app.patch("/api/links/:id", function (req, res) {
   //update ke liye
 });
 
-app.get("/:shortId", function (req, res) {
+app.get("/:shortId", async function (req, res) {
   //click tracking
+  const shortId = req.params.shortId; // extracting shortId form url params
+
+  // const link = await LinkModel.findOne({
+  //   shortId: shortId
+  // });
+
+  // if(!link){
+  //   return res.status(404).json({
+  //     message: "Not Found"
+  //   })
+  // }
+
+  try{
+
+  //   await LinkModel.updateOne({
+  //     shortId: link.shortId
+  //   }, {
+  //     $inc: {
+  //       clicks: 1
+  //     }
+  //  })
+
+  const link = await LinkModel.findOneAndUpdate({ //finding and updating at once
+    shortId: shortId
+    }, {
+      $inc : { //$inc inbuild mongo function to increase count
+        clicks: 1
+      }
+  })
+
+  if(!link){
+    return res.status(404).json({  // 404 == not found
+      message: "Not found"
+    })
+  }
+
+    res.redirect(link.originalUrl); // redirect is express inbult funcition
+
+  }catch(e){
+    return res.status(500).json({
+      message: "Server Error"
+    })
+  }
 });
 
 app.get("/api/analytics/:linkId", function (req, res) {
