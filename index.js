@@ -297,8 +297,33 @@ app.get("/:shortId", async function (req, res) {
   }
 });
 
-app.get("/api/analytics/:linkId", function (req, res) {
+app.get("/api/analytics/:linkId", middleware, async function (req, res) {
   //link data
+
+  try{
+
+    const linkId = req.params.linkId;
+    const userId = req.userId;
+
+    const link = await LinkModel.findOne({
+      _id: linkId,
+      userId
+    })
+
+    if(!link){
+      return res.status(404).json({
+        message: "Not found"
+      })
+    }
+
+    res.json({
+      link
+    })
+  }catch(e){
+    return res.status(500).json({
+      message: "Server Error"
+    })
+  }
 });
 
 // app.listen(3000, ()=>{
