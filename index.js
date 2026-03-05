@@ -163,17 +163,91 @@ app.post("/api/links/shorten", middleware, async function (req, res) {
   }
 });
 
-app.get("/api/links", function (req, res) {
+app.get("/api/links", middleware, async function (req, res) {
   //dashboard
+  try{
+    const userId = req.userId;
+
+    const links = await LinkModel.find({ //find all links with this userId
+      userId
+    })
+
+    res.json({ //send all links of user
+      links
+    })
+
+  }catch(e){
+    return res.status(500).json({
+      message: "Server Error"
+    })
+  }
   
 });
 
-app.delete("/api/links/:id", function (req, res) {
+app.delete("/api/links/:id", middleware, async function (req, res) {
   // link delete ke liye
+  try{
+    const linkId = req.params.id;
+    const userId = req.userId;
+
+    const dlt = await LinkModel.findOneAndDelete({
+      userId,
+      _id: linkId
+    })
+
+    if(!dlt){
+      return res.status(404).json({
+        message: "Link Not Found"
+      })
+    }
+
+    res.json({
+      message: "Link deleted"
+    })
+
+  }catch(e){
+    return res.status(500).json({
+      message: "Server Error"
+    })
+  }
+
 });
 
-app.patch("/api/links/:id", function (req, res) {
+app.patch("/api/links/:id", middleware, async function (req, res) {
   //update ke liye
+
+  try{
+    const linkId = req.params.id;
+
+    const parsedData = LinkSchema.safeParse(req.body);
+
+    if(!parsedData.success){
+      return res.status(400).json({
+        message: "Incorrect input"
+      })
+    }
+
+    const userId = req.userId;
+
+    await LinkModel.findOneAndUpdate({
+      userId,
+      _id: linkId
+    }, {
+      $set: {
+        title: parsedData.data.title,
+        originalUrl: parsedData.data.originalUrl
+      }
+    })
+
+    res.json({
+      message: "Updated successfully"
+    })
+  }
+  catch(e){
+    return res.status(500).json({
+      message: "Server Error"
+    })
+  }
 });
 
 app.get("/:shortId", async function (req, res) {
