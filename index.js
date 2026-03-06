@@ -9,12 +9,15 @@ import { LinkModel, UserModel } from "./db.js";
 import { nanoid } from 'nanoid';
 import qrcode from 'qrcode';
 import { middleware } from "./middleware.js";
+import cors from "cors";
+import { UAParser } from "ua-parser-js";
+import { ClickModel } from "./db.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const app = express();
 
 app.use(express.json()); // to parse the json body
-
+app.use(cors());
 
 app.post("/api/auth/signup", async function (req, res) {
   //new user ke liye
@@ -118,7 +121,7 @@ app.post("/api/links/shorten", middleware, async function (req, res) {
     }
 
     let finalId;
-    const { title, originalUrl, customAlias } = parsedData.data;
+    const { title, originalUrl, customAlias, expiresAt } = parsedData.data;
 
     if (customAlias) {
       // Check collision in both shortId and customAlias fields
@@ -148,6 +151,7 @@ app.post("/api/links/shorten", middleware, async function (req, res) {
       customAlias: customAlias || null,
       userId: req.userId,
       qrCode: qrDataUrl,
+      expiresAt: expiresAt || null
     });
 
     return res.json({
@@ -274,12 +278,16 @@ app.get("/:shortId", async function (req, res) {
   //     }
   //  })
 
-  const link = await LinkModel.findOneAndUpdate({ //finding and updating at once
+  // const link = await LinkModel.findOneAndUpdate({ //finding and updating at once
+  //   shortId: shortId
+  //   }, {
+  //     $inc : { //$inc inbuild mongo function to increase count
+  //       clicks: 1
+  //     }
+  // })
+
+  const link = await LinkModel.findOne({
     shortId: shortId
-    }, {
-      $inc : { //$inc inbuild mongo function to increase count
-        clicks: 1
-      }
   })
 
   if(!link){
@@ -287,6 +295,33 @@ app.get("/:shortId", async function (req, res) {
       message: "Not found"
     })
   }
+
+  if(link.expiresAt && link.expiresAt < new Date()){
+    return res.status(410).json({ // 410 matlab gone means link expired
+      message: "Not found"
+    })
+  }
+
+  await LinkModel.updateOne({
+    shortId: shortId }, {
+      $inc : {
+        clicks: 1
+      }
+  })
+
+  const ua = req.headers['user-agent'];
+  const parse = new UAParser(ua);
+  const browserName = parse.getBrowser().name;
+  const deviceType = parse.getDevice().type || "Desktop";
+  const referrer = req.get('Referrer') || 'Direct';
+
+  ClickModel.create({
+    linkId: link._id,
+    browser: browserName,
+    device: deviceType,
+    referrer
+  })
+
 
     res.redirect(link.originalUrl); // redirect is express inbult funcition
 
