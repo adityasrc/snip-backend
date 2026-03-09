@@ -26,7 +26,7 @@ router.get("/:shortId", async function (req, res) {
       });
     }
 
-    // Redirect pehle kar do (Super Fast Experience for User)
+    // Redirect pehle kar do 
     res.redirect(link.originalUrl); // redirect is express inbult funcition
 
     // Background Async task (Increases clicks and logs analytics)
@@ -41,7 +41,13 @@ router.get("/:shortId", async function (req, res) {
     const referrer = req.get('Referrer') || 'Direct';
 
     // IP based Location
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+   
+    if (process.env.NODE_ENV !== "production" && (ip === "::1" || ip === "127.0.0.1")) {
+      ip = "122.161.73.181"; // dummy indian ip for ui testing only
+    }
+
     const geo = geoip.lookup(ip);
 
     ClickModel.create({
@@ -51,7 +57,7 @@ router.get("/:shortId", async function (req, res) {
       referrer,
       country: geo ? geo.country : "Unknown",
       city: geo ? geo.city : "Unknown"
-    }).catch(err => console.log("Analytics save error", err)); // Fail safe
+    }).catch(err => console.log("Analytics save error", err)); 
 
   }catch(e){
     // Don't res.send if already redirected, handle silently

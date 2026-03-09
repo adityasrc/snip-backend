@@ -8,37 +8,21 @@ import { middleware } from "../middleware.js";
 const router = express.Router();
 
 router.post("/shorten", middleware, async function (req, res) {
-  //url shortening
-  //auth is left (done via middleware)
   try {
     const parsedData = LinkSchema.safeParse(req.body);
-
-    if (!parsedData.success) {
-      return res.status(400).json({
-        message: "Incorrect inputs"
-      });
-    }
+    if (!parsedData.success) return res.status(400).json({ message: "Incorrect inputs" });
 
     let finalId;
     const { title, originalUrl, customAlias, expiresAt } = parsedData.data;
 
     if (customAlias) {
-      // Check collision in both shortId and customAlias fields
       const checkAlias = await LinkModel.findOne({
         $or: [{ shortId: customAlias }, { customAlias: customAlias }]
       });
-
-      if (checkAlias) {
-        return res.status(409).json({
-          message: "Alias already exists"
-        });
-      } else {
-        finalId = customAlias;
-      }
+      if (checkAlias) return res.status(409).json({ message: "Alias already exists" });
+      finalId = customAlias;
     } else {
-      const shortId = nanoid(6); // customized length to 6
-      //nanoid - unique string id generator for js
-      finalId = shortId;
+      finalId = nanoid(6);
     }
 
     const link = await LinkModel.create({
@@ -50,52 +34,53 @@ router.post("/shorten", middleware, async function (req, res) {
       expiresAt: expiresAt || null
     });
 
+    
+    const qrDataUrl = await qrcode.toDataURL(originalUrl);
+
+    
     return res.json({
-      shortId: finalId,
+      _id: link._id,
+      finalId: finalId, 
+      qrDataUrl: qrDataUrl,
       originalUrl
     });
     
   } catch (e) {
-    return res.status(500).json({
-      message: "Server Error",
-      error: e.message
-    });
+    return res.status(500).json({ message: "Server Error", error: e.message });
   }
 });
 
 router.get("/", middleware, async function (req, res) {
-  //dashboard
-  try{
+  try {
     const userId = req.userId;
-    const links = await LinkModel.find({ //find all links with this userId
-      userId
-    }).sort({ createdAt: -1 }); // Naya: Latest links pehle aayenge
+    
+    const links = await LinkModel.find({ userId }).sort({ createdAt: -1 }).lean(); 
 
-    res.json({ //send all links of user
-      links
-    });
-  }catch(e){
+    
+    const linksWithQr = await Promise.all(links.map(async (link) => {
+      const qrCode = await qrcode.toDataURL(link.originalUrl);
+      return { ...link, qrCode }; // Add qrCode property
+    }));
+
+    res.json({ links: linksWithQr });
+  } catch(e) {
     return res.status(500).json({ message: "Server Error" });
   }
 });
 
 router.delete("/:id", middleware, async function (req, res) {
-  // link delete ke liye
-  try{
+  try {
     const linkId = req.params.id;
     const userId = req.userId;
 
-    const dlt = await LinkModel.findOneAndDelete({
-      userId,
-      _id: linkId
-    });
+    const dlt = await LinkModel.findOneAndDelete({ userId, _id: linkId });
 
-    if(!dlt){
-      return res.status(404).json({ message: "Link Not Found" });
-    }
+    if (!dlt) return res.status(404).json({ message: "Link Not Found" });
 
-    res.json({ message: "Link deleted" });
-  }catch(e){
+    await ClickModel.deleteMany({ linkId: linkId });
+
+    res.json({ message: "Link and associated analytics deleted" });
+  } catch(e) {
     return res.status(500).json({ message: "Server Error" });
   }
 });
