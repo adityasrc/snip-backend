@@ -27,7 +27,7 @@ router.get("/:shortId", async function (req, res) {
     }
 
     // Redirect pehle kar do 
-    res.redirect(link.originalUrl); // redirect is express inbult funcition
+    res.json({ originalUrl: link.originalUrl }); // redirect is express inbult funcition
 
     // Background Async task (Increases clicks and logs analytics)
     await LinkModel.updateOne({ shortId: shortId }, {
