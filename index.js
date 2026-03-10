@@ -27,6 +27,8 @@ app.use((err, req, res, next) => {
     .json({ message: "Internal Server Error! Something went wrong." });
 });
 
+
+
 async function main() {
   try {
     await mongoose.connect(process.env.MD_URL);

@@ -5,6 +5,12 @@ import geoip from 'geoip-lite';
 
 const router = express.Router();
 
+router.get('/', function(req, res){
+  res.status(200).json({
+    message: "Snip Backend is alive"
+  })
+});
+
 router.get("/:shortId", async function (req, res) {
   //click tracking
   const shortId = req.params.shortId; // extracting shortId form url params
