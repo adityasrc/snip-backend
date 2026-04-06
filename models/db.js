@@ -13,7 +13,7 @@ const Link = new Schema({
     title: String,
     originalUrl: {type: String, required: true},
     shortId: { type: String, unique: true, index: true }, 
-    customAlias : { type: String, unique: true },
+    customAlias : { type: String, unique: true, sparse: true },
     userId: { type: ObjectId, ref: "users", index: true, required: true },
     clicks: { type: Number, default: 0 },
     expiresAt: { type: Date, default: null }

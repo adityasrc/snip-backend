@@ -1,8 +1,14 @@
 import dotenv from "dotenv";
 dotenv.config();
+
+if (!process.env.JWT_SECRET) {
+  throw new Error("FATAL: JWT_SECRET is missing from environment");
+}
+
 import mongoose from "mongoose";
 import express from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 
 import authRoutes from "./routes/auth.js";
 import linkRoutes from "./routes/links.js";
@@ -13,10 +19,25 @@ const PORT = process.env.PORT || 10000;
 const app = express();
 
 app.use(express.json()); // to parse the json body
-app.use(cors());
+app.use(cors({ 
+  origin: [
+    process.env.FRONTEND_URL, 
+    "https://getsnip.vercel.app", 
+    "http://localhost:5173",
+    "http://localhost:3000"
+  ].filter(Boolean) 
+}));
 
-app.use("/api/auth", authRoutes);
-app.use("/api/links", linkRoutes);
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per `window`
+  message: { message: "Too many requests, please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use("/api/auth", limiter, authRoutes);
+app.use("/api/links", limiter, linkRoutes);
 app.use("/", redirectRoutes); // The short link redirector
 
 // Global Error Handler (SDE-1 Flex)

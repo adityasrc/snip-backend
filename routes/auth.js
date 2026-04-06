@@ -14,7 +14,7 @@ router.post("/signup", async function (req, res) {
   if (!parsedData.success) {
     return res.status(400).json({ // 400 bad request lagaya
       message: "Incorrect inputs",
-      error: parsedData.error,
+      error: parsedData.error.errors[0].message,
     });
   }
   try {
@@ -46,7 +46,7 @@ router.post("/signin", async function (req, res) {
   if (!parsedData.success) {
     return res.status(400).json({ //400 bad request
       message: "Incorrect inputs",
-      error: parsedData.error,
+      error: parsedData.error.errors[0].message,
     });
   }
 

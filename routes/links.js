@@ -46,7 +46,7 @@ router.post("/shorten", middleware, async function (req, res) {
     });
     
   } catch (e) {
-    return res.status(500).json({ message: "Server Error", error: e.message });
+    return res.status(500).json({ message: "Server Error" });
   }
 });
 
@@ -132,13 +132,13 @@ router.get("/analytics/:linkId", middleware, async function (req, res) {
     const linkId = req.params.linkId;
     const userId = req.userId;
 
-    const link = await LinkModel.findOne({ _id: linkId, userId });
+    const link = await LinkModel.findOne({ _id: linkId, userId }).lean();
 
     if(!link){
       return res.status(404).json({ message: "Not found" });
     }
 
-    const clickData = await ClickModel.find({ linkId: link._id });
+    const clickData = await ClickModel.find({ linkId: link._id }).lean();
 
     res.json({
       link,

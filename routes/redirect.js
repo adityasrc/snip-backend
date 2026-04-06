@@ -18,7 +18,7 @@ router.get("/:shortId", async function (req, res) {
   try {
     const link = await LinkModel.findOne({
       shortId: shortId,
-    });
+    }).lean();
 
     if (!link) {
       return res.status(404).json({
