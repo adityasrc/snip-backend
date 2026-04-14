@@ -46,6 +46,7 @@ router.post("/shorten", middleware, async function (req, res) {
     });
     
   } catch (e) {
+    console.error(e);
     return res.status(500).json({ message: "Server Error" });
   }
 });
@@ -64,6 +65,7 @@ router.get("/", middleware, async function (req, res) {
 
     res.json({ links: linksWithQr });
   } catch(e) {
+    console.error(e);
     return res.status(500).json({ message: "Server Error" });
   }
 });
@@ -81,6 +83,7 @@ router.delete("/:id", middleware, async function (req, res) {
 
     res.json({ message: "Link and associated analytics deleted" });
   } catch(e) {
+    console.error(e);
     return res.status(500).json({ message: "Server Error" });
   }
 });
@@ -109,6 +112,7 @@ router.patch("/:id", middleware, async function (req, res) {
 
     res.json({ message: "Updated successfully" });
   } catch(e) {
+    console.error(e);
     return res.status(500).json({ message: "Server Error" });
   }
 });
@@ -122,6 +126,7 @@ router.get("/qr/:shortId", async (req, res) => {
         const qrDataUrl = await qrcode.toDataURL(link.originalUrl);
         res.json({ qrDataUrl });
     } catch (e) {
+        console.error(e);
         res.status(500).json({ message: "Server Error" });
     }
 });
@@ -145,6 +150,7 @@ router.get("/analytics/:linkId", middleware, async function (req, res) {
       clicks: clickData
     });
   }catch(e){
+    console.error(e);
     return res.status(500).json({ message: "Server Error" });
   }
 });

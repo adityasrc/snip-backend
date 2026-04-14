@@ -14,6 +14,6 @@ export const SigninSchema = z.object({
 export const LinkSchema = z.object({
     title: z.string().max(50).optional(),
     originalUrl: z.string().url().refine(val => val.startsWith("http://") || val.startsWith("https://")),
-    customAlias: z.string().min(3).max(15).optional(),
+    customAlias: z.string().min(3).max(15).optional().or(z.literal("")).transform(val => val === "" ? undefined : val),
     expiresAt: z.string().optional()
 })

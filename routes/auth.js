@@ -31,6 +31,7 @@ router.post("/signup", async function (req, res) {
       userId: user._id,
     });
   } catch (e) {
+    console.error(e);
     res.status(409).json({
       //409 matlab confict or duplicate user
       message: "User already exisits with this email",
@@ -73,6 +74,7 @@ router.post("/signin", async function (req, res) {
       });
     }
   } catch (e) {
+    console.error(e);
     res.status(500).json({
       message: "Cannot signin",
     });

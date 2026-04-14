@@ -5,10 +5,10 @@ dotenv.config();
 export function middleware(req, res, next){
     const authHeader = req.headers.authorization ?? ""; //gives empty string if it is undefined(saftey ke liye)
 
-    const token = authHeader.split(" ")[1];
+    const token = authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
     if(!token){
-        return res.json({
-            message: "Token Missing"
+        return res.status(401).json({
+            message: "Token Missing or Invalid Format"
         })
     }
     try{
