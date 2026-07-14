@@ -30,6 +30,12 @@ const Click = new Schema({
   city: String     
 });
 
+const Counter = new Schema({
+  _id: { type: String, required: true },
+  seq: { type: Number, default: 0 }
+});
+
 export const UserModel = mongoose.model("users", User);
 export const LinkModel = mongoose.model("links", Link);
 export const ClickModel = mongoose.model("clicks", Click);
+export const CounterModel = mongoose.model("counters", Counter);

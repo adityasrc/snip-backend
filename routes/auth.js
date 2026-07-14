@@ -9,14 +9,14 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 router.post("/signup", async function (req, res) {
   //new user ke liye
-  const parsedData = CreateUserSchema.safeParse(req.body); //req.body == parsing the json body
+  const parsedData = CreateUserSchema.safeParse(req.body); //req.body => parsing the json body
 
   if (!parsedData.success) {
-    return res.status(400).json({ // 400 bad request lagaya
+    return res.status(400).json({ // 400 bad request
       message: "Incorrect inputs",
-      error: parsedData.error.errors[0].message,
     });
   }
+
   try {
     const { name, email, password } = parsedData.data;
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -45,7 +45,7 @@ router.post("/signin", async function (req, res) {
   // safe parse return parsed data, true or false, error
 
   if (!parsedData.success) {
-    return res.status(400).json({ //400 bad request
+    return res.status(400).json({ 
       message: "Incorrect inputs",
       error: parsedData.error.errors[0].message,
     });
@@ -60,7 +60,8 @@ router.post("/signin", async function (req, res) {
       if (passwordMatch) {
         const token = jwt.sign(
           { id: user._id, name: user.name, email: user.email },
-          JWT_SECRET
+          JWT_SECRET,
+          { expiresIn: "7d" }
         );
         return res.json({ token });
       } else {

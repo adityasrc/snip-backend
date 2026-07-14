@@ -1,7 +1,8 @@
 import express from "express";
 import { LinkSchema } from "../utils/zod.js";
 import { LinkModel, ClickModel } from "../models/db.js";
-import { nanoid } from 'nanoid';
+import { generateShortId } from "../utils/base62.js";
+import { getRedisClient } from "../utils/redis.js";
 import qrcode from 'qrcode';
 import { middleware } from "../middleware.js";
 
@@ -12,37 +13,43 @@ router.post("/shorten", middleware, async function (req, res) {
     const parsedData = LinkSchema.safeParse(req.body);
     if (!parsedData.success) return res.status(400).json({ message: "Incorrect inputs" });
 
-    let finalId;
+    let shortUrl;
     const { title, originalUrl, customAlias, expiresAt } = parsedData.data;
 
     if (customAlias) {
-      const checkAlias = await LinkModel.findOne({
+
+      const aliasExists = await LinkModel.exists({  //exists give better perfromance than findOne 
         $or: [{ shortId: customAlias }, { customAlias: customAlias }]
       });
-      if (checkAlias) return res.status(409).json({ message: "Alias already exists" });
-      finalId = customAlias;
+
+      if (aliasExists){
+        return res.status(409).json({ message: "Alias already exists" });
+      }
+
+      shortUrl = customAlias;
+
     } else {
-      finalId = nanoid(6);
+      shortUrl = await generateShortId();
     }
 
     const link = await LinkModel.create({
       title: title,
       originalUrl: originalUrl,
-      shortId: finalId,
+      shortId: shortUrl,
       customAlias: customAlias || null,
       userId: req.userId,
       expiresAt: expiresAt || null
     });
 
     
-    const qrDataUrl = await qrcode.toDataURL(originalUrl);
+    const qrDataUrl = await qrcode.toDataURL(shortUrl);
 
     
     return res.json({
       _id: link._id,
-      finalId: finalId, 
+      finalId: shortUrl, 
       qrDataUrl: qrDataUrl,
-      originalUrl
+      originalUrl: originalUrl
     });
     
   } catch (e) {
@@ -55,17 +62,12 @@ router.get("/", middleware, async function (req, res) {
   try {
     const userId = req.userId;
     
-    const links = await LinkModel.find({ userId }).sort({ createdAt: -1 }).lean(); 
+    const links = await LinkModel.find({ userId }).sort({ createdAt: -1 }).lean(); //desc order me show karega
 
-    
-    const linksWithQr = await Promise.all(links.map(async (link) => {
-      const qrCode = await qrcode.toDataURL(link.originalUrl);
-      return { ...link, qrCode }; // Add qrCode property
-    }));
+    return res.json({ links });
 
-    res.json({ links: linksWithQr });
   } catch(e) {
-    console.error(e);
+    // console.error(e);
     return res.status(500).json({ message: "Server Error" });
   }
 });
@@ -80,6 +82,13 @@ router.delete("/:id", middleware, async function (req, res) {
     if (!dlt) return res.status(404).json({ message: "Link Not Found" });
 
     await ClickModel.deleteMany({ linkId: linkId });
+
+    try {
+      const redis = getRedisClient();
+      await redis.del(`snip:link:${dlt.shortId}`);
+    } catch (redisErr) {
+      console.error("[Redis] Cache invalidation failed:", redisErr.message);
+    }
 
     res.json({ message: "Link and associated analytics deleted" });
   } catch(e) {
@@ -100,7 +109,7 @@ router.patch("/:id", middleware, async function (req, res) {
 
     const userId = req.userId;
 
-    await LinkModel.findOneAndUpdate({
+    const updated = await LinkModel.findOneAndUpdate({
       userId,
       _id: linkId
     }, {
@@ -109,6 +118,15 @@ router.patch("/:id", middleware, async function (req, res) {
         originalUrl: parsedData.data.originalUrl
       }
     });
+
+    if (updated) {
+      try {
+        const redis = getRedisClient();
+        await redis.del(`snip:link:${updated.shortId}`);
+      } catch (redisErr) {
+        console.error("[Redis] Cache invalidation failed:", redisErr.message);
+      }
+    }
 
     res.json({ message: "Updated successfully" });
   } catch(e) {
