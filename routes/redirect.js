@@ -71,7 +71,7 @@ router.get("/:shortId", async function (req, res) {
 
     const ua = req.headers["user-agent"];
     const { browser: browserName, device: deviceType } = parseUserAgent(ua);
-    const referrer = req.get("Referrer") || "Direct";
+    const referrer = req.query.ref || req.get("Referrer") || "Direct";
 
     let ip =
       req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
