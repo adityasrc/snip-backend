@@ -3,15 +3,15 @@ export function parseUserAgent(ua) {
 
   let browser = "Unknown";
   if (/Edg\//i.test(ua)) browser = "Edge";
-  else if (/OPR\//i.test(ua) || /Opera/i.test(ua)) browser = "Opera";
-  else if (/SamsungBrowser/i.test(ua)) browser = "Samsung";
-  else if (/Chrome\/[\d.]+/i.test(ua) && !/Chromium/i.test(ua)) browser = "Chrome";
-  else if (/Firefox\/[\d.]+/i.test(ua)) browser = "Firefox";
-  else if (/Safari\/[\d.]+/i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
+  else if (/OPR\//i.test(ua) || /Opera\//i.test(ua)) browser = "Opera";
+  else if (/SamsungBrowser\//i.test(ua)) browser = "Samsung";
+  else if (/Firefox\/\d|FxiOS\/\d/i.test(ua)) browser = "Firefox";
+  else if (/Chrome\/\d/i.test(ua) && !/Chromium\/\d/i.test(ua)) browser = "Chrome";
+  else if (/Safari\/\d/i.test(ua) && !/Chrome\/\d/i.test(ua)) browser = "Safari";
 
   let device = "Desktop";
-  if (/Mobi|Android|iPhone|iPod/i.test(ua)) device = "Mobile";
-  else if (/iPad|Tablet/i.test(ua)) device = "Tablet";
+  if (/Mobi|Android.*Mobile|iPhone|iPod/i.test(ua)) device = "Mobile";
+  else if (/iPad|Android(?!.*Mobile)|Tablet/i.test(ua)) device = "Tablet";
 
   return { browser, device };
 }
