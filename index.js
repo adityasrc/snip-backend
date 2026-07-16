@@ -50,7 +50,7 @@ app.use("/api/links/shorten", createLinkLimiter);
 app.use("/api/links", linkRoutes);
 app.use("/", redirectRoutes);
 
-app.use("*", function (req, res) {
+app.use(function (req, res) {
   res.status(404).json({ message: "Route not found" });
 });
 
