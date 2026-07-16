@@ -1,28 +1,36 @@
 {
   "type": "module",
   "name": "snip-backend",
-  "module": "index.js",
+  "main": "index.js",
   "private": true,
   "scripts": {
     "start": "bun run index.js",
-    "dev": "bun --watch index.js"
+    "dev": "bun --watch index.js",
+    "lint": "eslint .",
+    "format": "prettier --write ."
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bcrypt": "^5.0.2",
+    "@types/bun": "latest",
+    "@types/morgan": "^1.9.9",
+    "eslint": "^9.0.0",
+    "prettier": "^3.2.5"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "bcryptjs": "^3.0.3",
+    "bcrypt": "^5.1.1",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.1",
     "geoip-lite": "^2.0.0",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.6.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.2.4",
-    "ioredis": "^5.6.1",
+    "morgan": "^1.10.0",
     "qrcode": "^1.5.4",
     "zod": "^4.3.6"
   }

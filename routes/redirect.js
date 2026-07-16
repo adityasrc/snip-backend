@@ -56,7 +56,7 @@ router.get("/:shortId", async function (req, res) {
 
     if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
       return res.status(410).json({
-        message: "Not found",
+        message: "Link expired",
       });
     }
 
@@ -73,12 +73,9 @@ router.get("/:shortId", async function (req, res) {
     const { browser: browserName, device: deviceType } = parseUserAgent(ua);
     const referrer = req.query.ref || req.get("Referrer") || "Direct";
 
-    let ip =
-      req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-      req.headers["x-real-ip"] ||
-      req.socket.remoteAddress;
+    let ip = req.ip || req.socket.remoteAddress;
 
-    if (ip.startsWith("::ffff:")) {
+    if (ip && ip.startsWith("::ffff:")) {
       ip = ip.substring(7);
     }
 
@@ -92,9 +89,11 @@ router.get("/:shortId", async function (req, res) {
       country: geo ? geo.country : "Unknown",
       city: geo ? geo.city : "Unknown",
     }).catch((err) => console.log("Analytics save error", err));
+
   } catch (e) {
+    console.error("Redirection Error:", e);
     if (!res.headersSent) {
-      console.error("Redirection Error:", e);
+      res.status(500).json({ message: "Server Error" });
     }
   }
 });

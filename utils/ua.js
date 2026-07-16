@@ -1,5 +1,10 @@
+/**
+ * Parses a user-agent string to determine the browser and device type.
+ * * @param {string} ua The user-agent string from the request headers.
+ * @returns {{ browser: string, device: string }} An object containing the parsed browser and device.
+ */
 export function parseUserAgent(ua) {
-  if (!ua) return { browser: "Unknown", device: "Desktop" };
+  if (typeof ua !== "string") return { browser: "Unknown", device: "Desktop" };
 
   let browser = "Unknown";
   if (/Edg\//i.test(ua)) browser = "Edge";

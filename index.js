@@ -4,6 +4,8 @@ import mongoose from "mongoose";
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
+import helmet from "helmet";
+import morgan from "morgan";
 
 import authRoutes from "./routes/auth.js";
 import linkRoutes from "./routes/links.js";
@@ -13,6 +15,10 @@ const PORT = process.env.PORT || 10000;
 
 const app = express();
 
+app.set("trust proxy", 1);
+
+app.use(helmet());
+app.use(morgan("dev"));
 app.use(express.json());
 
 app.use(cors({ 
@@ -39,8 +45,6 @@ const createLinkLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-
-
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/links/shorten", createLinkLimiter);
 app.use("/api/links", linkRoutes);
@@ -50,8 +54,10 @@ app.use("*", function (req, res) {
   res.status(404).json({ message: "Route not found" });
 });
 
-
-
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: "Internal Server Error" });
+});
 
 async function main() {
   try {

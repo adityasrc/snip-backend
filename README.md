@@ -1,138 +1,70 @@
-# Snip — URL Shortener & Analytics
+# Snip: URL Shortener & Analytics
 
-A lightweight, full-stack URL shortener with real-time analytics. Built as a portfolio project to demonstrate full-stack engineering with a clean, maintainable architecture.
+A fast, lightweight, and secure URL shortener built to handle real traffic. I built this full-stack project to demonstrate clean backend architecture, focusing heavily on performance, data validation, and security.
 
-**Live:** https://getsnip.vercel.app · **Backend:** https://snip-backend.onrender.com
+**Live Frontend:** [https://sniphq.vercel.app](https://sniphq.vercel.app)
 
----
+**Live Backend:** [https://snip-backend.onrender.com](https://snip-backend.onrender.com)
 
-## Tech Stack
+## The Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Runtime | Bun |
-| Framework | Express.js |
-| Database | MongoDB (Mongoose) |
-| Auth | JWT (jsonwebtoken) |
-| Validation | Zod |
-| Analytics parsing | geoip-lite, ua-parser-js |
-| QR Codes | qrcode |
-| Rate Limiting | express-rate-limit |
+* **Runtime:** Bun
+* **Framework:** Node.js with Express
+* **Database:** MongoDB (Mongoose)
+* **Caching:** Redis (ioredis)
+* **Security:** Helmet, native bcrypt, express-rate-limit
+* **Validation:** Zod
+* **Authentication:** JWT
 
----
+## How It Works Under the Hood
 
-## Architecture
+### Lightning Fast Redirects
 
-### Zero-Latency Redirect
-The redirect handler sends the HTTP 302 **before** writing to the database. Analytics are parsed and saved asynchronously without blocking the user:
+When someone clicks a short link, speed is the priority. The server checks the Redis cache first. If the link is found, the user is redirected instantly.
 
-```js
-res.redirect(302, link.originalUrl); // user is sent immediately
+### Background Analytics
 
-// runs after response, doesn't affect redirect speed
-setImmediate(async () => {
-  await ClickModel.create({ linkId, browser, device, country, city });
-  await LinkModel.findByIdAndUpdate(linkId, { $inc: { clicks: 1 } });
-});
-```
+Nobody wants to wait for a page to load while the server saves tracking data. The redirect happens immediately, and the server processes the analytics (like parsing the user's location, browser, and device) entirely in the background.
 
-### Analytics Enrichment
-Every click is enriched using local databases — no external API calls, no added latency:
-- **geoip-lite**: maps IP → country + city using a local MaxMind DB
-- **ua-parser-js**: parses the `User-Agent` header → browser + device type
+### Bulletproof Inputs
 
-### Auth
-JWT-based stateless auth. Token is stored in `localStorage` on the client and sent via `Authorization: Bearer <token>` header on every request using an Axios interceptor.
+Every single request that hits the server is strictly validated using Zod. This ensures bad data or malicious payloads never even make it to the database logic.
 
----
+## Key Features
 
-## Data Models
-
-### Link
-```
-shortId      (String, unique, indexed) — used for redirect lookup
-originalUrl  (String, required)
-customAlias  (String, sparse unique) — optional custom slug
-userId       (ObjectId ref users, indexed)
-clicks       (Number, default 0)
-expiresAt    (Date, nullable) — null means no expiry
-```
-
-### Click
-```
-linkId    (ObjectId ref links, indexed)
-timestamp (Date)
-browser   (String)
-device    (String)
-country   (String)
-city      (String)
-referrer  (String)
-```
-
----
-
-## API Routes
-
-### Auth — `/api/auth`
-| Method | Route | Description |
-|--------|-------|-------------|
-| POST | `/signup` | Register a new user |
-| POST | `/signin` | Login, returns JWT |
-
-### Links — `/api/links` (all protected by JWT middleware)
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/` | Get all links for authenticated user |
-| POST | `/shorten` | Create a new short link |
-| PATCH | `/:id` | Update title or destination URL |
-| DELETE | `/:id` | Delete link and all its click data |
-| GET | `/analytics/:linkId` | Get link + all click records |
-| GET | `/qr/:shortId` | Generate QR code for a link |
-
-### Redirect — `/`
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/:shortId` | Redirect to original URL (zero-latency, async analytics) |
-
----
-
-## Environment Variables
-
-Create a `.env` file in the root:
-
-```env
-MD_URL=mongodb+srv://<user>:<password>@cluster.mongodb.net/snip
-JWT_SECRET=your_jwt_secret_here
-FRONTEND_URL=http://localhost:5173
-PORT=10000
-```
-
----
+* **Custom Aliases:** Users can let the app generate a random Base62 short ID or pick their own custom URL slug.
+* **QR Codes:** Every shortened link automatically gets a scannable QR code.
+* **Link Expiration:** Links can be set to expire automatically at a specific date and time.
+* **Detailed Analytics:** The dashboard tracks total clicks, referring websites, geographic locations, and device types.
 
 ## Running Locally
 
+To test this out on your own machine, you will need Bun and Redis installed.
+
 ```bash
-# Clone the repo
+# Clone the repository
 git clone https://github.com/adityasrc/snip-backend.git
 cd snip-backend
 
-# Install dependencies
+# Install the dependencies
 bun install
 
-# Start dev server
-bun run index.js
+# Start the development server
+bun run dev
+
 ```
 
-Server runs on `http://localhost:10000`.
+The server will start on `http://localhost:10000`.
 
----
+## Environment Variables
 
-## Key Design Decisions
+Create a `.env` file in the root directory and add the following keys:
 
-**Why Bun instead of Node?** Bun's native speed and built-in test runner made local development faster. The production deployment on Render is compatible with both.
+```env
+PORT=10000
+MD_URL=mongodb+srv://<user>:<password>@cluster.mongodb.net/snip
+REDIS_URL=redis://localhost:6379
+JWT_SECRET=your_super_secret_string
+FRONTEND_URL=http://localhost:5173
 
-**Why JWT + localStorage?** Simpler to implement and explain than sessions/cookies for a portfolio project. In production, `httpOnly` cookies would be preferred.
-
-**Why geoip-lite vs an API?** Local DB lookup is instantaneous and free. The tradeoff is the DB needs manual updates for accuracy, but for this use case it's sufficient.
-
-**Why sparse unique index on `customAlias`?** Allows multiple links to have `null` alias while still enforcing uniqueness on non-null values.
+```

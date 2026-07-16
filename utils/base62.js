@@ -1,6 +1,7 @@
 import { CounterModel } from "../models/db.js";
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+const OFFSET = 100_000_000_000;
 
 function toBase62(num) {
   if (num === 0) return CHARS[0];
@@ -13,10 +14,17 @@ function toBase62(num) {
 }
 
 export async function generateShortId() {
-  const counter = await CounterModel.findOneAndUpdate(
-    { _id: "linkId" },
-    { $inc: { seq: 1 } },
-    { upsert: true, new: true }
-  );
-  return toBase62(counter.seq);
+  try {
+    const counter = await CounterModel.findOneAndUpdate(
+      { _id: "linkId" },
+      { $inc: { seq: 1 } },
+      { upsert: true, new: true }
+    );
+
+    const finalSeq = counter.seq + OFFSET;
+    return toBase62(finalSeq);
+  } catch (error) {
+    console.error("Failed to generate short ID:", error.message);
+    throw new Error("Database error while generating short ID");
+  }
 }

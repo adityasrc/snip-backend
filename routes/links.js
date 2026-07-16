@@ -4,11 +4,12 @@ import { LinkModel, ClickModel } from "../models/db.js";
 import { generateShortId } from "../utils/base62.js";
 import { getRedisClient } from "../utils/redis.js";
 import qrcode from 'qrcode';
-import { middleware } from "../middleware.js";
+import { requireAuth } from "../middleware.js";
 
 const router = express.Router();
+const BASE_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
-router.post("/shorten", middleware, async function (req, res) {
+router.post("/shorten", requireAuth, async function (req, res) {
   try {
     const parsedData = LinkSchema.safeParse(req.body);
     if (!parsedData.success) return res.status(400).json({ message: "Incorrect inputs" });
@@ -17,17 +18,15 @@ router.post("/shorten", middleware, async function (req, res) {
     const { title, originalUrl, customAlias, expiresAt } = parsedData.data;
 
     if (customAlias) {
-
-      const aliasExists = await LinkModel.exists({  //exists give better perfromance than findOne 
+      const aliasExists = await LinkModel.exists({
         $or: [{ shortId: customAlias }, { customAlias: customAlias }]
       });
 
-      if (aliasExists){
+      if (aliasExists) {
         return res.status(409).json({ message: "Alias already exists" });
       }
 
       shortUrl = customAlias;
-
     } else {
       shortUrl = await generateShortId();
     }
@@ -41,38 +40,39 @@ router.post("/shorten", middleware, async function (req, res) {
       expiresAt: expiresAt || null
     });
 
-    
-    const qrDataUrl = await qrcode.toDataURL(shortUrl);
+    const qrDataUrl = await qrcode.toDataURL(`${BASE_URL}/${shortUrl}`);
 
-    
     return res.json({
       _id: link._id,
-      finalId: shortUrl, 
+      finalId: shortUrl,
       qrDataUrl: qrDataUrl,
       originalUrl: originalUrl
     });
-    
+
   } catch (e) {
     console.error(e);
     return res.status(500).json({ message: "Server Error" });
   }
 });
 
-router.get("/", middleware, async function (req, res) {
+router.get("/", requireAuth, async function (req, res) {
   try {
     const userId = req.userId;
-    
-    const links = await LinkModel.find({ userId }).sort({ createdAt: -1 }).lean(); //desc order me show karega
+
+    const links = await LinkModel.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
 
     return res.json({ links });
 
-  } catch(e) {
-    // console.error(e);
+  } catch (e) {
+    console.error(e);
     return res.status(500).json({ message: "Server Error" });
   }
 });
 
-router.delete("/:id", middleware, async function (req, res) {
+router.delete("/:id", requireAuth, async function (req, res) {
   try {
     const linkId = req.params.id;
     const userId = req.userId;
@@ -91,19 +91,18 @@ router.delete("/:id", middleware, async function (req, res) {
     }
 
     res.json({ message: "Link and associated analytics deleted" });
-  } catch(e) {
+  } catch (e) {
     console.error(e);
     return res.status(500).json({ message: "Server Error" });
   }
 });
 
-router.patch("/:id", middleware, async function (req, res) {
-  //update ke liye
-  try{
+router.patch("/:id", requireAuth, async function (req, res) {
+  try {
     const linkId = req.params.id;
     const parsedData = LinkSchema.safeParse(req.body);
 
-    if(!parsedData.success){
+    if (!parsedData.success) {
       return res.status(400).json({ message: "Incorrect input" });
     }
 
@@ -117,7 +116,7 @@ router.patch("/:id", middleware, async function (req, res) {
         title: parsedData.data.title,
         originalUrl: parsedData.data.originalUrl
       }
-    });
+    }, { new: true });
 
     if (updated) {
       try {
@@ -129,35 +128,33 @@ router.patch("/:id", middleware, async function (req, res) {
     }
 
     res.json({ message: "Updated successfully" });
-  } catch(e) {
+  } catch (e) {
     console.error(e);
     return res.status(500).json({ message: "Server Error" });
   }
 });
 
- 
 router.get("/qr/:shortId", async (req, res) => {
-    try {
-        const link = await LinkModel.findOne({ shortId: req.params.shortId });
-        if (!link) return res.status(404).json({ message: "Not found" });
-        
-        const qrDataUrl = await qrcode.toDataURL(link.originalUrl);
-        res.json({ qrDataUrl });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ message: "Server Error" });
-    }
+  try {
+    const link = await LinkModel.findOne({ shortId: req.params.shortId });
+    if (!link) return res.status(404).json({ message: "Not found" });
+
+    const qrDataUrl = await qrcode.toDataURL(`${BASE_URL}/${link.shortId}`);
+    res.json({ qrDataUrl });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Server Error" });
+  }
 });
 
-router.get("/analytics/:linkId", middleware, async function (req, res) {
-  //link data
-  try{
+router.get("/analytics/:linkId", requireAuth, async function (req, res) {
+  try {
     const linkId = req.params.linkId;
     const userId = req.userId;
 
     const link = await LinkModel.findOne({ _id: linkId, userId }).lean();
 
-    if(!link){
+    if (!link) {
       return res.status(404).json({ message: "Not found" });
     }
 
@@ -167,7 +164,7 @@ router.get("/analytics/:linkId", middleware, async function (req, res) {
       link,
       clicks: clickData
     });
-  }catch(e){
+  } catch (e) {
     console.error(e);
     return res.status(500).json({ message: "Server Error" });
   }
