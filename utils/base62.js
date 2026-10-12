@@ -1,6 +1,6 @@
 import { CounterModel } from "../models/db.js";
 
-const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+const CHARS = "zAmikyd4BYjgqJ0T8eXlcrNFGHLWpZKfxQoM7DS69OPb5CsnIU2E3uthav1wVR";
 const OFFSET = 100_000_000_000;
 
 function toBase62(num) {

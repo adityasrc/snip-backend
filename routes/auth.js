@@ -7,12 +7,25 @@ import { UserModel } from "../models/db.js";
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 
+if (!JWT_SECRET) {
+  throw new Error("FATAL: JWT_SECRET is not defined.");
+}
+
+function createToken(user) {
+  return jwt.sign(
+    { id: user._id },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+}
+
 router.post("/signup", async function (req, res) {
   const parsedData = CreateUserSchema.safeParse(req.body);
 
   if (!parsedData.success) {
     return res.status(400).json({
       message: "Incorrect inputs",
+      error: parsedData.error.flatten().fieldErrors,
     });
   }
 
@@ -21,14 +34,12 @@ router.post("/signup", async function (req, res) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await UserModel.create({
-      name: name,
-      email: email,
+      name,
+      email,
       password: hashedPassword,
     });
 
-    res.status(201).json({
-      userId: user._id,
-    });
+    return res.status(201).json({ token: createToken(user) });
   } catch (e) {
     console.error(e);
     if (e.code === 11000) {
@@ -36,7 +47,7 @@ router.post("/signup", async function (req, res) {
         message: "User already exists with this email",
       });
     }
-    res.status(500).json({
+    return res.status(500).json({
       message: "Internal server error",
     });
   }
@@ -48,13 +59,13 @@ router.post("/signin", async function (req, res) {
   if (!parsedData.success) {
     return res.status(400).json({
       message: "Incorrect inputs",
-      error: parsedData.error.errors[0].message,
+      error: parsedData.error.flatten().fieldErrors,
     });
   }
 
   try {
     const { email, password } = parsedData.data;
-    const user = await UserModel.findOne({ email: email });
+    const user = await UserModel.findOne({ email });
 
     if (!user) {
       return res.status(401).json({
@@ -70,17 +81,11 @@ router.post("/signin", async function (req, res) {
       });
     }
 
-    const token = jwt.sign(
-      { id: user._id, name: user.name, email: user.email },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    return res.json({ token });
+    return res.json({ token: createToken(user) });
 
   } catch (e) {
     console.error(e);
-    res.status(500).json({
+    return res.status(500).json({
       message: "Cannot signin",
     });
   }
