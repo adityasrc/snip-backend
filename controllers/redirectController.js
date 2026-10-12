@@ -83,6 +83,7 @@ export async function handleRedirect(req, res) {
     }
 
     const geo = geoip.lookup(ip);
+    console.log(`[Analytics] ShortId: ${shortId} | IP: ${ip} | Country: ${geo ? geo.country : "Unknown"}`);
 
     ClickModel.create({
       linkId: link._id,
