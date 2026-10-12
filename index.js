@@ -16,7 +16,7 @@ const MONGO_URI = process.env.MONGO_URI || process.env.DATABASE_URL || process.e
 
 const app = express();
 
-app.set("trust proxy", 1);
+app.set("trust proxy", true);
 
 app.use(helmet());
 app.use(morgan("dev"));

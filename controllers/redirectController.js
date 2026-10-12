@@ -70,7 +70,14 @@ export async function handleRedirect(req, res) {
     const { browser: browserName, device: deviceType } = parseUserAgent(userAgent);
     const referrer = req.query.ref || req.get("Referrer") || "Direct";
 
-    let ip = req.ip || req.socket.remoteAddress;
+    const forwarded = req.headers["x-forwarded-for"];
+    let ip =
+      req.headers["cf-connecting-ip"] ||
+      (typeof forwarded === "string" ? forwarded.split(",")[0].trim() : null) ||
+      req.headers["x-real-ip"] ||
+      req.ip ||
+      req.socket.remoteAddress;
+
     if (ip && ip.startsWith("::ffff:")) {
       ip = ip.substring(7);
     }
