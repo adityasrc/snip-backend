@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { CreateUserSchema, SigninSchema } from "../utils/zod.js";
 import { UserModel } from "../models/db.js";
+import { requireAuth } from "../middleware.js";
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -13,7 +14,7 @@ if (!JWT_SECRET) {
 
 function createToken(user) {
   return jwt.sign(
-    { id: user._id },
+    { id: user._id, name: user.name, email: user.email },
     JWT_SECRET,
     { expiresIn: "7d" }
   );
@@ -39,7 +40,11 @@ router.post("/signup", async function (req, res) {
       password: hashedPassword,
     });
 
-    return res.status(201).json({ token: createToken(user) });
+    const token = createToken(user);
+    return res.status(201).json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email },
+    });
   } catch (e) {
     console.error(e);
     if (e.code === 11000) {
@@ -81,13 +86,36 @@ router.post("/signin", async function (req, res) {
       });
     }
 
-    return res.json({ token: createToken(user) });
+    const token = createToken(user);
+    return res.json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email },
+    });
 
   } catch (e) {
     console.error(e);
     return res.status(500).json({
       message: "Cannot signin",
     });
+  }
+});
+
+router.get("/me", requireAuth, async function (req, res) {
+  try {
+    const user = await UserModel.findById(req.userId).select("name email");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    return res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 

@@ -27,9 +27,13 @@ export async function createShortLink(req, res) {
     }
 
     let shortUrl;
-    const { title, originalUrl, customAlias, expiresAt } = parsedData.data;
+    const RESERVED_ALIASES = ["api", "signin", "signup", "dashboard", "analytics", "404"];
 
     if (customAlias) {
+      if (RESERVED_ALIASES.includes(customAlias.toLowerCase())) {
+        return res.status(400).json({ message: "That alias is reserved" });
+      }
+
       const aliasExists = await LinkModel.exists({
         $or: [{ shortId: customAlias }, { customAlias }],
       });
