@@ -6,7 +6,10 @@ const client = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
   enableOfflineQueue: false,
   maxRetriesPerRequest: 1,
   retryStrategy(times) {
-    return Math.min(times * 50, 2000);
+    if (times > 5) {
+      return null;
+    }
+    return Math.min(times * 100, 2000);
   },
 });
 

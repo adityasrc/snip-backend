@@ -27,6 +27,7 @@ export async function createShortLink(req, res) {
     }
 
     let shortUrl;
+    const { title, originalUrl, customAlias, expiresAt } = parsedData.data;
     const RESERVED_ALIASES = ["api", "signin", "signup", "dashboard", "analytics", "404"];
 
     if (customAlias) {
@@ -92,8 +93,8 @@ export async function deleteLink(req, res) {
     const linkId = req.params.id;
     const userId = req.userId;
 
-    const dlt = await LinkModel.findOneAndDelete({ userId, _id: linkId });
-    if (!dlt) {
+    const deleted = await LinkModel.findOneAndDelete({ userId, _id: linkId });
+    if (!deleted) {
       return res.status(404).json({ message: "Link Not Found" });
     }
 
@@ -102,7 +103,7 @@ export async function deleteLink(req, res) {
     // clear redis cache if cached
     try {
       const redis = getRedisClient();
-      await redis.del(`snip:link:${dlt.shortId}`);
+      await redis.del(`snip:link:${deleted.shortId}`);
     } catch (redisErr) {
       console.error("[Redis] Cache invalidation failed:", redisErr.message);
     }
@@ -132,7 +133,7 @@ export async function updateLink(req, res) {
       { userId, _id: linkId },
       {
         $set: {
-          title: parsedData.data.title,
+          title: parsedData.data.title || parsedData.data.originalUrl,
           originalUrl: parsedData.data.originalUrl,
         },
       },

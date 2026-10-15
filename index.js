@@ -10,6 +10,7 @@ import morgan from "morgan";
 import authRoutes from "./routes/auth.js";
 import linkRoutes from "./routes/links.js";
 import redirectRoutes from "./routes/redirect.js";
+import { FRONTEND_URL } from "./config.js";
 
 const PORT = process.env.PORT || 10000;
 const MONGO_URI = process.env.MONGO_URI || process.env.DATABASE_URL || process.env.MD_URL;
@@ -22,9 +23,11 @@ app.use(helmet());
 app.use(morgan("dev"));
 app.use(express.json());
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS
+const rawOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
-  : ["http://localhost:5173", "http://localhost:3000", "https://trysnip.vercel.app", process.env.FRONTEND_URL].filter(Boolean);
+  : ["http://localhost:5173", "http://localhost:3000", "https://trysnip.vercel.app"];
+
+const allowedOrigins = Array.from(new Set([...rawOrigins, FRONTEND_URL].filter(Boolean)));
 
 app.use(cors({ 
   origin: (origin, callback) => {

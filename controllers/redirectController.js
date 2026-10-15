@@ -2,6 +2,7 @@ import { LinkModel, ClickModel } from "../models/db.js";
 import { parseUserAgent } from "../utils/ua.js";
 import geoip from "geoip-lite";
 import { getRedisClient } from "../utils/redis.js";
+import { FRONTEND_URL } from "../config.js";
 
 const BOT_USER_AGENTS = /twitterbot|telegrambot|whatsapp|facebookexternalhit|slackbot|discordbot|linkedinbot|googlebot|bingbot|applebot|preview|crawler|spider/i;
 
@@ -30,7 +31,12 @@ export async function handleRedirect(req, res) {
 
     // return 404 if link does not exist
     if (!link) {
-      return res.status(404).json({ message: "Not found" });
+      return res.redirect(302, `${FRONTEND_URL}/404`);
+    }
+
+    // check link expiration
+    if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
+      return res.redirect(302, `${FRONTEND_URL}/404?reason=expired`);
     }
 
     // save to redis with dynamic ttl if not already cached
@@ -45,11 +51,6 @@ export async function handleRedirect(req, res) {
       await redis.setex(cacheKey, ttl, JSON.stringify(link));
     } catch (redisErr) {
       console.error("[Redis] Cache write failed:", redisErr.message);
-    }
-
-    // check link expiration
-    if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
-      return res.status(410).json({ message: "Link expired" });
     }
 
     const userAgent = req.get("User-Agent") || "";

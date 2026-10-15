@@ -12,7 +12,7 @@ export function requireAuth(req, res, next) {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-        // We know exactly what our token contains from auth.js
+        // attach user id to request
         req.userId = decoded.id; 
         next();
     } catch {

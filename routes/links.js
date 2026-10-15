@@ -18,8 +18,6 @@ const createLinkLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-
-// Links API Routes
 router.post("/shorten", createLinkLimiter, requireAuth, createShortLink);
 router.get("/", requireAuth, getUserLinks);
 router.delete("/:id", requireAuth, deleteLink);
